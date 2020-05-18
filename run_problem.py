@@ -1,4 +1,4 @@
-from graph import *
+# from graph import *
 import random # to generate random distances while there is no connection to the API
 import networkx as nx
 import matplotlib.pyplot as plt
