@@ -1,0 +1,11 @@
+1.https://papers.nips.cc/paper/8190-reinforcement-learning-for-solving-the-vehicle-routing-problem.pdf
+“For this purpose, we consider the Markov Decision Process (MDP) formulation of the problem, in which the optimal solution can be viewed as a sequence of decisions. This allows us to use RL to produce near-optimal solutions by increasing the probability of decoding “desirable” sequences. “
+
+
+2.https://openreview.net/pdf?id=BJe1334YDH
+“Each state includes features from the problem instance, the solution and the running history. Stationary features, such as the location and demand of each customer, are considered as problem-specific since they are invariant across solutions. Solution-specific features are based on the current travel- ing plan.“
+"The actions can be classified into two classes, intra-route operators and inter-route operators. An intra-route operator attempts to reduce traveling distance of an individual route, while inter-route operators aim at reducing total traveling distance by moving customers between more than one route"
+
+
+3.https://www.diva-portal.org/smash/get/diva2:1369370/FULLTEXT01.pdf
+_states are the unvisited nodes

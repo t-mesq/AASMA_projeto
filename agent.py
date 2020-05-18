@@ -29,54 +29,6 @@ class cTrip():
 		self.capacity = capacity
 		self.first_school = -1
 
-
-	def solve(self):
-
-			# choose a school
-			random_school_id = rd.randint(1,len(self.schools))
-			self.first_school = random_school_id
-			print("first_school", random_school_id)
-			# choose children from that school
-			current_cargo = self.randomly_choose_children(random_school_id, self.capacity)
-			print("current_cargo", current_cargo)
-			# update children left at that school
-			self.schools[random_school_id] = self.update_children_left_at_school(self.schools[random_school_id], current_cargo)
-			print("current_school_children", self.schools[random_school_id])
-			# set current place
-			current_place = self.agent.graph.nodes()[random_school_id]
-			print("current_place", current_place)
-			# condition to stop -> school has not kids
-			school_has_kids = not all([not self.schools[key] for key in self.schools.keys()])
-			print("schools", self.schools)
-
-			path = [current_place]
-
-			travel_time = 0
-
-			while school_has_kids:
-
-				next_place_id = self.choose_next_place(current_cargo, current_place)
-
-				if next_place_id in self.schools.keys():
-					print("next_place_school", self.schools[next_place_id], current_cargo)
-					# get kids from that school
-					current_cargo += self.randomly_choose_children(next_place_id, self.capacity-len(current_cargo))
-					# update children left at school
-					self.schools[next_place_id] = self.update_children_left_at_school(self.schools[next_place_id], current_cargo)
-				else:
-					print("current_cargo", current_cargo)
-					current_cargo = self.leave_children_at_home(current_cargo, next_place_id)
-					print("current_cargo after leaving children at home", current_cargo)
-
-				school_has_kids = not all([not self.schools[key] for key in self.schools.keys()])
-
-				travel_time += self.agent.graph.edges[current_place['node_id'], next_place_id]['weight']
-				current_place = self.agent.graph.nodes[next_place_id]
-				path.append(current_place)
-
-			return path, travel_time
-
-
 	def choose_next_place(self, current_cargo, current_place):
 
 		possible_successors = []
@@ -89,8 +41,6 @@ class cTrip():
 		print("possible_successors", possible_successors)
 		# choosing randomly for now... 
 		return rd.choice(possible_successors)
-
-
 
 	def randomly_choose_children(self, school_id, number_places):
 
@@ -106,6 +56,53 @@ class cTrip():
 	def update_children_left_at_school(self, children_at_school, current_cargo):
 			
 		return [child for child in children_at_school if child not in current_cargo]
+
+
+	def solve(self):
+
+		# choose a school
+		random_school_id = rd.randint(1,len(self.schools))
+		self.first_school = random_school_id
+		print("first_school", random_school_id)
+		# choose children from that school
+		current_cargo = self.randomly_choose_children(random_school_id, self.capacity)
+		print("current_cargo", current_cargo)
+		# update children left at that school
+		self.schools[random_school_id] = self.update_children_left_at_school(self.schools[random_school_id], current_cargo)
+		print("current_school_children", self.schools[random_school_id])
+		# set current place
+		current_place = self.agent.graph.nodes()[random_school_id]
+		print("current_place", current_place)
+		# condition to stop -> school has not kids
+		school_has_kids = not all([not self.schools[key] for key in self.schools.keys()])
+		print("schools", self.schools)
+
+		path = [current_place]
+
+		travel_time = 0
+
+		while school_has_kids:
+
+			next_place_id = self.choose_next_place(current_cargo, current_place)
+
+			if next_place_id in self.schools.keys():
+				print("next_place_school", self.schools[next_place_id], current_cargo)
+				# get kids from that school
+				current_cargo += self.randomly_choose_children(next_place_id, self.capacity-len(current_cargo))
+				# update children left at school
+				self.schools[next_place_id] = self.update_children_left_at_school(self.schools[next_place_id], current_cargo)
+			else:
+				print("current_cargo", current_cargo)
+				current_cargo = self.leave_children_at_home(current_cargo, next_place_id)
+				print("current_cargo after leaving children at home", current_cargo)
+
+			school_has_kids = not all([not self.schools[key] for key in self.schools.keys()])
+
+			travel_time += self.agent.graph.edges[current_place['node_id'], next_place_id]['weight']
+			current_place = self.agent.graph.nodes[next_place_id]
+			path.append(current_place)
+
+		return path, travel_time
 
 
 
@@ -134,6 +131,8 @@ class cAgent():
 			# which school should we choose first?
 			# group home adresses based on bus capacity?
 			# what should the agent learn?
+
+			# each state is a solution OR each state is an unvisited node (see references)
 
 			trip = cTrip(self, copy.deepcopy(self.schools), copy.deepcopy(self.capacity))
 
