@@ -1,6 +1,6 @@
 import random as rd
 import copy
-
+import numpy as np
 
 
 # class cSchool():
@@ -11,6 +11,8 @@ import copy
 # 		self.pos = pos
 # 		self.children = children
 # 		self.child_left = children
+from collections import defaultdict
+from enum import Enum
 
 
 class cChildren():
@@ -19,6 +21,12 @@ class cChildren():
 		self.id = child_id
 		self.home = home_pos
 		self.school = school_id
+
+
+class School:
+	def __init__(self, id, students):
+		self.id = id
+		self.students = students
 
 
 class cTrip():
@@ -110,7 +118,7 @@ class cAgent():
 
 	def __init__(self, children, schools, graph, capacity):
 
-		self.children ={}
+		self.children = {}
 		for child_id, pos, school_id in children:
 			self.children[child_id] = cChildren(child_id, pos, school_id)
 		self.schools = schools
@@ -145,11 +153,34 @@ class cAgent():
 			it += 1
 
 
+""""
+** ** ** ** ** ** ** ** ** ** ** **
+** ** A: Q - learning 	** ** ** **
+** ** ** ** ** ** ** ** ** ** ** ** 
+"""
 
+ActionSelection = Enum("ActionSelection", "eGreedy softMax")
+LearningApproach = Enum("LearningApproach", "QLearning SARSA")
 
+actionSelection = ActionSelection.eGreedy;
+learningApproach = LearningApproach.QLearning;
 
+it = 0
+total = 100000
+discount = 0.9
+learningRate = 0.8
+epsilon = 0.7
+randfactor = 0.05
 
+q = defaultdict(lambda: np.zeros(10))	#actions
+actions = {}
 
+def getState(pos, bus_content, schools_state):
+	return 0 #n_pos * schools_states * bus_state
+
+#Creates the initial Q - value function structure: (x y action) < - 0
+def initQfunction():
+	return
 
 
 

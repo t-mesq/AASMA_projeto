@@ -1,25 +1,49 @@
 # from graph import *
-import random # to generate random distances while there is no connection to the API
+import random  # to generate random distances while there is no connection to the API
 import networkx as nx
 import matplotlib.pyplot as plt
+import pylab as pl
 from agent import *
 
 
+def read_adresses_input(filename):
+    nodes = []
+    nodes_adresses = []
+    read_nodes = 0
+
+    doc = open(filename, "r").readlines()
+
+    for line in doc:
+        read_parameter, value = line.split(' ', 1)
+        if read_parameter == 'capacity':
+            capacity = int(value)
+        elif read_parameter == 'schools':
+            school_nodes = list(map(int, value.split(' ')))
+        elif read_parameter == 'nodes':
+            read_nodes = int(value)
+        elif read_nodes > 0:
+            nodes.append(list(map(int, line.split())))
+            read_nodes -= 1
+        else:
+            nodes_adresses.append(eval(line))
+
+    return capacity, school_nodes, nodes, nodes_adresses
+
 
 def read_input(filename):
-    '''Read list of nodes from input file and returns the list of nodes on the proposed format 
+    '''Read list of nodes from input file and returns the list of nodes on the proposed format
         Considering the format:
         n_nodes
         node1_coord_x node1_coord_y "school_flag" "school_id"
         node2_coord_x node2_coord_y  "associated_school_id"
-        (...) 
+        (...)
         **Al schools are given first**'''
 
     # Read lines from file
     doc = open(filename, "r").readlines()
-    
+
     # Save the nodes' positions and schools id's
-    nodes = []  
+    nodes = []
     schools_ids = []
     node_id = 1
     read_nodes = False
@@ -44,7 +68,7 @@ def read_input(filename):
             node_id += 1
 
     if number_nodes != len(nodes):
-        print("Something went wrong while reading nodes: there should be %d nodes, and there are %d" %(number_nodes,len(nodes)))
+        print("Something went wrong while reading nodes: there should be %d nodes, and there are %d" % (number_nodes, len(nodes)))
         continue_program = str(input("Do you want to continue? [y/n]"))
         if continue_program == "n":
             sys.exit()
@@ -52,10 +76,7 @@ def read_input(filename):
     return capacity, max_iterations, nodes, schools_ids
 
 
-
-
 def main(arg: list = []) -> None:
-   
     if len(arg) < 2:
         print("The correct way to run is: python run_problem.py <file>")
         continue_program = str(input("Do you want to continue using the file sample.txt? [y/n]"))
@@ -65,7 +86,7 @@ def main(arg: list = []) -> None:
             filename = 'sample.txt'
     else:
         filename = arg[1]
-        
+
     # read list of nodes from file
     capacity, max_iterations, nodes_list, schools_ids = read_input(filename)
 
@@ -79,9 +100,8 @@ def main(arg: list = []) -> None:
             if i == j:
                 continue
             # get distance between u and v using the Google API (for now it is random)
-            dist = random.randint(1,100) # distance from u to v might be different from v to u (there might be one way streets, for example)
-            edges_list.append([[i,j], dist])
-
+            dist = random.randint(1, 100)  # distance from u to v might be different from v to u (there might be one way streets, for example)
+            edges_list.append([[i, j], dist])
 
     graph = nx.DiGraph()
     print("schools_ids", schools_ids)
@@ -90,7 +110,7 @@ def main(arg: list = []) -> None:
     schools = {}
     print("schools")
     for i, pos, school_id in nodes_list:
-        graph.add_node(i, pos = pos, node_id = i)
+        graph.add_node(i, pos=pos, node_id=i)
         if i not in schools_ids:
             if school_id in schools.keys():
                 schools[school_id].append(i)
@@ -99,21 +119,20 @@ def main(arg: list = []) -> None:
     print("graph.nodes", graph.nodes)
     print("schools", schools)
 
-    for e,w in edges_list:
-        graph.add_edge(e[0],e[1], weight = w)
+    for e, w in edges_list:
+        graph.add_edge(e[0], e[1], weight=w)
 
-    pos_list=nx.get_node_attributes(graph,'pos')
+    pos_list = nx.get_node_attributes(graph, 'pos')
 
-
-    nx.draw(graph, pos_list, node_color = colors)
-    # plt.show()
+    nx.draw_networkx(graph, pos=nx.spring_layout(), node_color=colors)
+    plt.show()
 
     agent = cAgent(nodes_list, schools, graph, capacity)
     agent.solve(max_iterations)
-    #agent.get_solution()
-
+    # agent.get_solution()
 
 
 if __name__ == "__main__":
     import sys
+
     main(sys.argv)
