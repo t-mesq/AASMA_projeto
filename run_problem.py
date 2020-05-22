@@ -71,13 +71,21 @@ def print_path_graph(capacity, school_nodes, nodes, nodes_adresses, path):
 
     pos = get_pos_from_coordinates(nodes_adresses)
     print(pos)
+    plt.figure(figsize=(5, 5))
 
     for i, sub_path in enumerate(sub_paths):
-        for e in sub_path:
-            key = G.add_edge(e[0], e[1], weight=nodes[e[0]][e[1]], key=i)
-        path_edges = [(x, y, i) for x, y in sub_path]
-        print(path_edges)
-        collection = nx.draw_networkx_edges(G, pos, edgelist=path_edges, connectionstyle="arc3,rad=0.1", edge_color=random.choice(list(mcolors.CSS4_COLORS)), alpha=0.8)
+        keys = G.add_edges_from(sub_path, path=i)
+        collection = nx.draw_networkx_edges(
+            G,
+            pos,
+            edgelist=[(x, y, i) for x, y in sub_path],
+            connectionstyle="arc3,rad=0.1",
+            edge_color=[i]*len(sub_path),
+            edge_cmap=plt.get_cmap("Set1"),
+            edge_vmin=float(0),
+            edge_vmax=float(len(sub_paths)),
+            alpha=0.8,
+            label=str(i))
         for patch in collection:
             patch.set_linestyle('dashed')
     nx.draw_networkx_nodes(G, pos, node_size=200, node_color=colors, alpha=0.5)
