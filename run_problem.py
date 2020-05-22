@@ -2,6 +2,8 @@
 import random  # to generate random distances while there is no connection to the API
 import networkx as nx
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+
 import pylab as pl
 from agent import *
 
@@ -28,6 +30,64 @@ def read_adresses_input(filename):
             nodes_adresses.append(eval(line))
 
     return capacity, school_nodes, nodes, nodes_adresses
+
+
+path = (2, 3, 4, 1, 5, 8, 7, 1, 9, 6, 2, 0, 5, 1, 2, 1)
+
+def get_pos_from_coordinates(coordinates):
+    pos = {}
+    min_x = min(coordinates, key=lambda pair: pair[0])[0]
+    min_y = min(coordinates, key=lambda pair: pair[1])[1]
+    max_x = max(coordinates, key=lambda pair: pair[0])[0]
+    max_y = max(coordinates, key=lambda pair: pair[1])[1]
+
+    offset_x, offset_y = max_x - min_x, max_y - min_y
+
+    for i, (x, y) in enumerate(coordinates):
+        pos[i] = ((x - min_x) / offset_x, (y - min_y) / offset_y)
+
+
+    return pos
+
+
+def print_path_graph(capacity, school_nodes, nodes, nodes_adresses, path):
+    print(capacity, school_nodes, nodes, nodes_adresses, sep="\n")
+
+    number_nodes = len(nodes)
+
+    # create edges list considering a path
+    sub_paths = []
+    sub_path = []
+    for i in range(len(path) - 1):
+        sub_path.append((path[i], path[i + 1]))
+        if path[i + 1] in school_nodes:
+            sub_paths.append(sub_path)
+            sub_path = []
+
+    print("Sup-paths:", sub_paths)
+
+    G = nx.MultiDiGraph()
+    colors = ['red' if n not in school_nodes else 'orange' for n in range(number_nodes)]
+
+    pos = get_pos_from_coordinates(nodes_adresses)
+    print(pos)
+
+    for i, sub_path in enumerate(sub_paths):
+        for e in sub_path:
+            key = G.add_edge(e[0], e[1], weight=nodes[e[0]][e[1]], key=i)
+        path_edges = [(x, y, i) for x, y in sub_path]
+        print(path_edges)
+        collection = nx.draw_networkx_edges(G, pos, edgelist=path_edges, connectionstyle="arc3,rad=0.1", edge_color=random.choice(list(mcolors.CSS4_COLORS)), alpha=0.8)
+        for patch in collection:
+            patch.set_linestyle('dashed')
+    nx.draw_networkx_nodes(G, pos, node_size=200, node_color=colors, alpha=0.5)
+    nx.draw_networkx_labels(G, pos, font_size=10)
+
+        # nx.draw_networkx(graph, pos=nx.spring_layout(), node_color=colors)
+    # plt.show()
+    print("Graph:", G.graph, G.edges, G.nodes, sep='\n')
+    plt.show()
+    return sub_paths
 
 
 def read_input(filename):
@@ -75,8 +135,10 @@ def read_input(filename):
 
     return capacity, max_iterations, nodes, schools_ids
 
-
 def main(arg: list = []) -> None:
+    print_path_graph(*read_adresses_input("adresses.txt"), path)
+
+    """
     if len(arg) < 2:
         print("The correct way to run is: python run_problem.py <file>")
         continue_program = str(input("Do you want to continue using the file sample.txt? [y/n]"))
@@ -130,6 +192,7 @@ def main(arg: list = []) -> None:
     agent = cAgent(nodes_list, schools, graph, capacity)
     agent.solve(max_iterations)
     # agent.get_solution()
+"""
 
 
 if __name__ == "__main__":
