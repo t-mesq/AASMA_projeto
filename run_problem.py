@@ -4,6 +4,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
+
 import pylab as pl
 from agent import *
 
@@ -67,8 +68,6 @@ def print_path_graph(capacity, school_nodes, nodes, nodes_adresses, path):
     print("Sup-paths:", sub_paths)
 
     G = nx.MultiDiGraph()
-    colors = ['red' if n not in school_nodes else 'orange' for n in range(number_nodes)]
-
     pos = get_pos_from_coordinates(nodes_adresses)
     print(pos)
     plt.figure(figsize=(5, 5))
@@ -81,13 +80,14 @@ def print_path_graph(capacity, school_nodes, nodes, nodes_adresses, path):
             edgelist=[(x, y, i) for x, y in sub_path],
             connectionstyle="arc3,rad=0.1",
             edge_color=[i]*len(sub_path),
-            edge_cmap=plt.get_cmap("Set1"),
+            edge_cmap=plt.cm.Set1,
             edge_vmin=float(0),
             edge_vmax=float(len(sub_paths)),
             alpha=0.8,
             label=str(i))
         for patch in collection:
             patch.set_linestyle('dashed')
+    colors = ['red' if n not in school_nodes else 'orange' for n in G.nodes()]
     nx.draw_networkx_nodes(G, pos, node_size=200, node_color=colors, alpha=0.5)
     nx.draw_networkx_labels(G, pos, font_size=10)
 
@@ -144,7 +144,7 @@ def read_input(filename):
     return capacity, max_iterations, nodes, schools_ids
 
 def main(arg: list = []) -> None:
-    print_path_graph(*read_adresses_input("adresses.txt"), path)
+    print_path_graph(*read_adresses_input("generated_map.txt"), path)
 
     """
     if len(arg) < 2:
