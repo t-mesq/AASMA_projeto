@@ -32,10 +32,21 @@ def example():
     m.save("map.html")
 
 
-def generate_coordinates(origins, offset, cluster_ratio, n_adresses, seed=0, draw=True):
+def distribute_adresses(distribution, n_schools):
+    students_distribution = distribution.copy()
+    schools_distribution = [[0] * len(distribution) for _ in range(n_schools)]
+
+    for i, count in enumerate(distribution):
+        for student in range(count):
+            random.choice(schools_distribution)[i] += 1
+
+    return schools_distribution
+
+
+def generate_coordinates(origins, offset, n_points, n_adresses, seed=0, draw=True):
     random.seed(seed)
     np.random.seed(seed)
-    adresses = np.array([(random.choice(origins)[0] + random.uniform(-1, 1) * offset, random.choice(origins)[1] + random.uniform(-1, 1) * offset) for _ in range(cluster_ratio * n_adresses)])
+    adresses = np.array([(random.choice(origins)[0] + random.uniform(-1, 1) * offset, random.choice(origins)[1] + random.uniform(-1, 1) * offset) for _ in range(n_points)])
 
     kmeans = KMeans(init='k-means++', n_clusters=n_adresses, n_init=10)
     kmeans.fit(adresses)
@@ -77,7 +88,7 @@ def generate_coordinates(origins, offset, cluster_ratio, n_adresses, seed=0, dra
         plt.yticks(())
         plt.show()
 
-    return origins + list(map(list, centroids))
+    return origins + list(map(list, centroids)), [list(kmeans.labels_).count(i) for i in range(n_adresses)]
 
 
 def get_distance_matrix(coordinates):
@@ -89,9 +100,10 @@ def get_distance_matrix(coordinates):
     )
 
 
-def generate_map_file(school_coordinates, capacity, offset=0.1, n_adresses=8, filename="generated_map.txt"):
-    coordinates = generate_coordinates(school_coordinates, offset, 5, n_adresses)
+def generate_map_file(school_coordinates, capacity, offset=0.1, n_points=80, n_adresses=8, filename="generated_map.txt"):
+    coordinates, adresses_distribution = generate_coordinates(school_coordinates, offset, n_points, n_adresses)
     matrix = get_distance_matrix(coordinates)
+    schools_distribution = distribute_adresses(adresses_distribution, len(school_coordinates))
 
     f = open(filename, "w+")
     lines = ["capacity " + str(capacity)]
@@ -99,6 +111,8 @@ def generate_map_file(school_coordinates, capacity, offset=0.1, n_adresses=8, fi
     for i in range(len(school_coordinates)):
         schools += str(i) + " "
     lines.append(schools[:-1])
+    for school_distribution in schools_distribution:
+        lines.append(' '.join(list(map(str, school_distribution))))
     lines.append("nodes " + str(len(school_coordinates) + n_adresses))
     for line in matrix["durations"]:
         str_line = ""
@@ -112,7 +126,7 @@ def generate_map_file(school_coordinates, capacity, offset=0.1, n_adresses=8, fi
 
 
 def main():
-    generate_map_file([[13.384116, 52.533558], [13.428726, 52.519355]], 10, 0.1, 8)
+    generate_map_file([[13.384116, 52.533558], [13.428726, 52.519355]], 10, 0.1, 50, 6)
 
 
 if __name__ == "__main__":

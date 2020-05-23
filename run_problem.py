@@ -139,6 +139,8 @@ def read_input(filename):
             for i in line[1:]:
                 schools[school_id].append(int(i))
             read_schools -= 1
+    return capacity, max_iterations, nodes, schools
+
 
 
 def main(arg: list = []) -> None:
