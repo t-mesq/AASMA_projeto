@@ -112,9 +112,10 @@ def read_input(filename):
 
     # Save the nodes' positions and schools id's
     nodes = []
-    schools_ids = []
-    node_id = 1
-    read_nodes = False
+    schools = {}
+    node_id = 0
+    read_nodes = 0
+    read_schools = 0
 
     for line in doc:
         read_parameter = line.split(' ')[0]
@@ -123,30 +124,25 @@ def read_input(filename):
         elif read_parameter == 'iterations':
             max_iterations = int(line.split(' ')[1])
         elif read_parameter == 'nodes':
-            number_nodes = int(line.split(' ')[1])
-            read_nodes = True
-        elif read_nodes:
+            read_nodes = int(line.split(' ')[1])
+        elif read_nodes > 0:
             line = line.split(' ')
-            if line[2] == 'school':
-                school_id = int(line[3])
-                schools_ids.append(school_id)
-            else:
-                school_id = int(line[2])
-            nodes.append([node_id, (float(line[0]), float(line[1])), school_id])
+            nodes.append([node_id, (float(line[0]), float(line[1]))])
             node_id += 1
+            read_nodes -= 1
+        elif read_parameter == 'schools':
+            read_schools = int(line.split(' ')[1])
+        elif read_schools > 0:
+            line = line.split(' ')
+            school_id = int(line[0])
+            schools[school_id] = []
+            for i in line[1:]:
+                schools[school_id].append(int(i))
+            read_schools -= 1
 
-    if number_nodes != len(nodes):
-        print("Something went wrong while reading nodes: there should be %d nodes, and there are %d" % (number_nodes, len(nodes)))
-        continue_program = str(input("Do you want to continue? [y/n]"))
-        if continue_program == "n":
-            sys.exit()
-
-    return capacity, max_iterations, nodes, schools_ids
 
 def main(arg: list = []) -> None:
     print_path_graph(*read_adresses_input("generated_map.txt"), path)
-
-    """
     if len(arg) < 2:
         print("The correct way to run is: python run_problem.py <file>")
         continue_program = str(input("Do you want to continue using the file sample.txt? [y/n]"))
@@ -158,15 +154,15 @@ def main(arg: list = []) -> None:
         filename = arg[1]
 
     # read list of nodes from file
-    capacity, max_iterations, nodes_list, schools_ids = read_input(filename)
+    capacity, max_iterations, nodes_list, schools = read_input(filename)
 
     number_nodes = len(nodes_list)
 
     # create edges list considering a complete graph
     edges_list = []
-    print("nodes_list", nodes_list)
-    for i, pos, school_id in nodes_list:
-        for j, pos, school_id in nodes_list:
+    # print("nodes_list", nodes_list)
+    for i, pos in nodes_list:
+        for j, pos in nodes_list:
             if i == j:
                 continue
             # get distance between u and v using the Google API (for now it is random)
@@ -174,19 +170,18 @@ def main(arg: list = []) -> None:
             edges_list.append([[i, j], dist])
 
     graph = nx.DiGraph()
-    print("schools_ids", schools_ids)
-    colors = ['blue' if n not in schools_ids else 'orange' for n in range(number_nodes)]
+    # print("schools_ids", schools.keys())
+    colors = ['blue' if n not in schools.keys() else 'orange' for n in range(number_nodes)]
 
-    schools = {}
-    print("schools")
-    for i, pos, school_id in nodes_list:
-        graph.add_node(i, pos=pos, node_id=i)
-        if i not in schools_ids:
-            if school_id in schools.keys():
-                schools[school_id].append(i)
-            else:
-                schools[school_id] = [i]
-    print("graph.nodes", graph.nodes)
+    # print("schools")
+    for i, pos in nodes_list:
+        graph.add_node(i, pos = pos, node_id = i)
+        # if i not in schools_ids:
+        #     if school_id in schools.keys():
+        #         schools[school_id].append(i)
+        #     else:
+        #         schools[school_id] = [i]
+    # print("graph.nodes", graph.nodes)
     print("schools", schools)
 
     for e, w in edges_list:
@@ -194,16 +189,14 @@ def main(arg: list = []) -> None:
 
     pos_list = nx.get_node_attributes(graph, 'pos')
 
-    nx.draw_networkx(graph, pos=nx.spring_layout(), node_color=colors)
-    plt.show()
+    nx.draw(graph, pos_list, node_color=colors)
+    # plt.show()
 
-    agent = cAgent(nodes_list, schools, graph, capacity)
-    agent.solve(max_iterations)
-    # agent.get_solution()
-"""
+    agent = Agent(nodes_list, schools, graph, capacity)
+    agent.run(max_iterations)
+    #agent.get_solution()
 
 
 if __name__ == "__main__":
     import sys
-
     main(sys.argv)
