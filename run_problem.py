@@ -83,7 +83,7 @@ def main(arg: list = []) -> None:
 
     # print("schools")
     for i, pos in nodes_list:
-        graph.add_node(i, pos=pos, node_id=i)
+        graph.add_node(i, pos = pos, node_id = i)
         # if i not in schools_ids:
         #     if school_id in schools.keys():
         #         schools[school_id].append(i)
@@ -102,7 +102,7 @@ def main(arg: list = []) -> None:
 
     agent = Agent(nodes_list, schools, graph, capacity)
     agent.run(max_iterations)
-    # agent.get_solution()
+    #agent.get_solution()
 
 
 if __name__ == "__main__":

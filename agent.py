@@ -241,12 +241,12 @@ class Trip():
 class Agent():
 
     def __init__(self, addresses, schools, graph, capacity):
-
+        self.schools = schools
+ 
         self.addresses = {}
         for address_id, pos in addresses:
             self.addresses[address_id] = Address(address_id, pos, address_id in schools.keys())
-        self.schools = schools
-        self.graph = graph
+       self.graph = graph
         self.capacity = capacity
         self.actions = {'pick', 'travel', 'drop'}
         # self.states = nested_defaultdict(int, 1+len(schools)+1) # 1 for position + one for each school + 1 for the bus
@@ -290,6 +290,4 @@ class Agent():
 
             # update q function etc and restart
             it += 1
-
-
 
