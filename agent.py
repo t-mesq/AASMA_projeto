@@ -346,30 +346,51 @@ class Trip():
         return sequence, travel_times
 
 
-class Agent(threading.Thread):
+class Agent():
 
-    def __init__(self, lock, q_values, schools, graph, capacity, epsilon=0.8, learning_rate=0.8, discount=0.9, max_iterations=10000, rand_factor=0.01):
-        threading.Thread.__init__(self)
+    def __init__(self, schools, graph, capacity, epsilon=0.8, learning_rate=0.8, discount=0.9, max_iterations=10000, rand_factor=0.01, q_values=None):
         self.schools = schools
- 
         self.addresses = {}
-        # for address_id, pos in addresses:
-        #     print(address_id)
-        #     self.addresses[address_id] = Address(address_id, pos, address_id in schools.keys())
         self.graph = graph
         self.capacity = capacity
         self.actions = {'pick', 'travel', 'drop'}
-        self.q_values = q_values
         self.epsilon = epsilon
         self.learning_rate = learning_rate
         self.discount = discount
-        self.lock = lock
         self.max_iterations = max_iterations
         self.rand_factor = rand_factor
         self.dec = (epsilon-rand_factor)/max_iterations
+        if q_values is None:
+            self.q_values = defaultdict(int)
+        else:
+            self.q_values = q_values
 
     def update_epsilon(self):
         self.epsilon = max(self.epsilon - self.dec, self.rand_factor);
+
+    def get_q_value(self, key):
+        return self.q_values[key]
+
+    def update_q_value(self, key, value):
+        self.q_values[key] = value
+
+    # eventually add here the q-learning function
+    def run(self):
+        trip = Trip(self, self.schools)
+        trip.run(self.max_iterations)
+
+
+class ThreadingAgent(Agent, threading.Thread):
+
+    def __init__(self, lock, q_values, schools, graph, capacity, epsilon=0.8, learning_rate=0.8, discount=0.9, max_iterations=10000, rand_factor=0.01):
+        threading.Thread.__init__(self)
+        Agent.__init__(self, schools, graph, capacity, epsilon=epsilon, learning_rate=learning_rate, discount=discount, max_iterations=max_iterations, rand_factor=rand_factor, q_values=q_values)
+        self.lock = lock
+
+    def update_q_value(self, key, value):
+        self.lock[key].acquire()
+        self.q_values[key] = value
+        self.lock[key].release()
 
     def get_q_value(self, key):
         self.lock[key].acquire()
@@ -377,45 +398,3 @@ class Agent(threading.Thread):
             return self.q_values[key]
         finally:
             self.lock[key].release()
-
-    def update_q_value(self, key, value):
-        self.lock[key].acquire()
-        self.q_values[key] = value
-        self.lock[key].release()
-
-    # eventually add here the q-learning function
-    def run(self):
-
-        trip = Trip(self, self.schools)
-        trip.run(self.max_iterations)
-        # count = len([item for item in self.q_values.items() if item > 0])
-        # print(self.q_values.items())
-
-
-        # it = 0
-        # while it < max_iterations:
-
-        #     # what can we optimize?
-        #     # how children are chosen to take each bus -> how many at each time. Suppose the number of children % capacity != 0. How to divide them?
-        #     # which school should we choose first?
-        #     # group home adresses based on bus capacity?
-        #     # what should the agent learn?
-
-        #     # each state is a solution OR each state is an unvisited node (see references)
-        #     trip = Trip(self, copy.deepcopy(self.schools))
-
-        #     # add some information from the previous trip(s) to guide the next trip
-        #     # choose a school
-        #     random_school_id = rd.choice(list(self.schools.keys()))
-
-        #     _ = trip.run(random_school_id)
-
-
-
-        #     if it % 100 == 0:
-        #         sequence, travel_time = trip.recover_greedy_path()
-        #         print(travel_time, sequence, sep='\n')
-
-        #     # update q function etc and restart
-        #     it += 1
-

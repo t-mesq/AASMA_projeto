@@ -3,6 +3,7 @@ import random  # to generate random distances while there is no connection to th
 import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import enum
 
 
 import pylab as pl
@@ -203,13 +204,20 @@ def main(arg: list = []) -> None:
 
     # nx.draw(graph, pos_list, node_color=colors)
     # plt.show()
-    lock = defaultdict(lambda: threading.Lock())
-    Q = defaultdict(int)
+    Mode = enum.Enum("Mode", "Single Threaded")
+    mode = Mode.Single
+    # mode = Mode.Threaded
 
-    for i in range(1):
-        agent = Agent(lock, Q, schools_list, adj_matrix, capacity, max_iterations=max_iterations)
-        agent.start()
-    #agent.get_solution()
+    if mode == Mode.Single:
+        agent = Agent(schools_list, adj_matrix, capacity, max_iterations=max_iterations)
+        agent.run()
+    else:
+        lock = defaultdict(lambda: threading.Lock())
+        Q = defaultdict(int)
+
+        for i in range(5):
+            agent = ThreadingAgent(lock, Q, schools_list, adj_matrix, capacity, max_iterations=max_iterations)
+            agent.start()
 
 
 if __name__ == "__main__":
