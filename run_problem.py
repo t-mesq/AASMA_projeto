@@ -11,8 +11,9 @@ from agent import *
 
 def read_adresses_input(filename):
     nodes = []
-    nodes_adresses = []
+    nodes_addresses = []
     read_nodes = 0
+    schools = {}
 
     doc = open(filename, "r").readlines()
 
@@ -20,20 +21,24 @@ def read_adresses_input(filename):
         read_parameter, value = line.split(' ', 1)
         if read_parameter == 'capacity':
             capacity = int(value)
+        elif read_parameter == 'iterations':
+            iterations = int(value)
         elif read_parameter == 'schools':
             school_nodes = list(map(int, value.split(' ')))
+            read_schools = len(school_nodes)
+        elif read_schools > 0:
+            schools[school_nodes[len(school_nodes)-read_schools]] = list(map(int, line.split(' ')))
+            read_schools -= 1
         elif read_parameter == 'nodes':
             read_nodes = int(value)
         elif read_nodes > 0:
             nodes.append(list(map(int, line.split())))
             read_nodes -= 1
         else:
-            nodes_adresses.append(eval(line))
+            print(line)
+            nodes_addresses.append(eval(line))
 
-    return capacity, school_nodes, nodes, nodes_adresses
-
-
-path = (2, 3, 4, 1, 5, 8, 7, 1, 9, 6, 2, 0, 5, 1, 2, 1)
+    return capacity, iterations, school_nodes, schools, nodes, nodes_addresses
 
 def get_pos_from_coordinates(coordinates):
     pos = {}
@@ -51,8 +56,9 @@ def get_pos_from_coordinates(coordinates):
     return pos
 
 
-def print_path_graph(capacity, school_nodes, nodes, nodes_adresses, path):
-    print(capacity, school_nodes, nodes, nodes_adresses, sep="\n")
+def print_path_graph(school_nodes, nodes, nodes_addresses, path):
+    
+    print( school_nodes, nodes, nodes_addresses, sep="\n")
 
     number_nodes = len(nodes)
 
@@ -68,7 +74,7 @@ def print_path_graph(capacity, school_nodes, nodes, nodes_adresses, path):
     print("Sup-paths:", sub_paths)
 
     G = nx.MultiDiGraph()
-    pos = get_pos_from_coordinates(nodes_adresses)
+    pos = get_pos_from_coordinates(nodes_addresses)
     print(pos)
     plt.figure(figsize=(5, 5))
 
@@ -94,7 +100,7 @@ def print_path_graph(capacity, school_nodes, nodes, nodes_adresses, path):
         # nx.draw_networkx(graph, pos=nx.spring_layout(), node_color=colors)
     # plt.show()
     print("Graph:", G.graph, G.edges, G.nodes, sep='\n')
-    plt.show()
+    # plt.show()
     return sub_paths
 
 
@@ -144,57 +150,62 @@ def read_input(filename):
 
 
 def main(arg: list = []) -> None:
-    print_path_graph(*read_adresses_input("generated_map.txt"), path)
+    
     if len(arg) < 2:
         print("The correct way to run is: python run_problem.py <file>")
         continue_program = str(input("Do you want to continue using the file sample.txt? [y/n]"))
         if continue_program == "n":
             sys.exit()
         else:
-            filename = 'sample.txt'
+            filename = 'generated_map.txt'
     else:
         filename = arg[1]
 
     # read list of nodes from file
-    capacity, max_iterations, nodes_list, schools = read_input(filename)
 
-    number_nodes = len(nodes_list)
+    capacity, max_iterations, school_ids, schools_list, adj_matrix, addresses = read_adresses_input(filename)
 
-    # create edges list considering a complete graph
-    edges_list = []
-    # print("nodes_list", nodes_list)
-    for i, pos in nodes_list:
-        for j, pos in nodes_list:
-            if i == j:
-                continue
-            # get distance between u and v using the Google API (for now it is random)
-            dist = random.randint(1, 100)  # distance from u to v might be different from v to u (there might be one way streets, for example)
-            edges_list.append([[i, j], dist])
+    path = (2, 3, 4, 1, 5, 7, 1, 6, 2, 0, 5, 1, 2, 1) #just an example
+    print_path_graph(school_ids, adj_matrix, addresses, path)
 
-    graph = nx.DiGraph()
-    # print("schools_ids", schools.keys())
-    colors = ['blue' if n not in schools.keys() else 'orange' for n in range(number_nodes)]
+    number_nodes = len(adj_matrix)
 
-    # print("schools")
-    for i, pos in nodes_list:
-        graph.add_node(i, pos = pos, node_id = i)
-        # if i not in schools_ids:
-        #     if school_id in schools.keys():
-        #         schools[school_id].append(i)
-        #     else:
-        #         schools[school_id] = [i]
-    # print("graph.nodes", graph.nodes)
-    print("schools", schools)
+    # # create edges list considering a complete graph
+    # edges_list = []
+    # # print("nodes_list", nodes_list)
+    # for i, pos in nodes_list:
+    #     for j, pos in nodes_list:
+    #         if i == j:
+    #             continue
+    #         # get distance between u and v using the Google API (for now it is random)
+    #         dist = random.randint(1, 100)  # distance from u to v might be different from v to u (there might be one way streets, for example)
+    #         edges_list.append([[i, j], dist])
 
-    for e, w in edges_list:
-        graph.add_edge(e[0], e[1], weight=w)
+    # graph = nx.DiGraph()
+    # # print("schools_ids", schools.keys())
+    # colors = ['blue' if n not in schools.keys() else 'orange' for n in range(number_nodes)]
 
-    pos_list = nx.get_node_attributes(graph, 'pos')
+    # # print("schools")
+    # for i, pos in nodes_list:
+    #     graph.add_node(i, pos = pos, node_id = i)
+    #     # if i not in schools_ids:
+    #     #     if school_id in schools.keys():
+    #     #         schools[school_id].append(i)
+    #     #     else:
+    #     #         schools[school_id] = [i]
+    # # print("graph.nodes", graph.nodes)
+    print("schools", schools_list)
 
-    nx.draw(graph, pos_list, node_color=colors)
+    # for e, w in edges_list:
+    #     graph.add_edge(e[0], e[1], weight=w)
+
+    # pos_list = nx.get_node_attributes(graph, 'pos')
+
+    # nx.draw(graph, pos_list, node_color=colors)
     # plt.show()
 
-    agent = Agent(nodes_list, schools, graph, capacity)
+
+    agent = Agent(addresses, schools_list, adj_matrix, capacity)
     agent.run(max_iterations)
     #agent.get_solution()
 

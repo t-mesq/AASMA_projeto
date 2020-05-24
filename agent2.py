@@ -63,7 +63,7 @@ class Trip():
         capacity = self.agent.capacity - sum(current_state['bus'].values())
         # at a school with capacity to pick kids and there are kids at that school
         if position in current_state['schools'].keys() and capacity > 0 and sum(current_state['schools'][position]) > 0:
-            possible_actions.append('pick')
+            possible_actions += ['pick', 'travel']
         # at a home address and there are kids to drop at that address
         if position in current_state['bus'].keys() and current_state['bus'][position] > 0:
             possible_actions.append('drop')
@@ -127,7 +127,7 @@ class Trip():
                 next_state['bus'][address] = 1
             # update school's state
             next_state['schools'][school_id][address] -= 1
-            next_state['action'] = 'pick'
+            next_state['action'] = 'drop'
             return_states.append(next_state)
 
         # print("pick_children_from_school", return_states)
@@ -144,8 +144,6 @@ class Trip():
                 possible_successors.append(node_id)
             elif sum(current_state['bus'].values()) == 0 and all([sum(current_state['schools'][key]) == 0 for key in current_state['schools'].keys()]):
                 possible_successors.append(self.initial_school_id)
-                # print("HERE")
-                # print(self.initial_state_key, self.final_state_key, sep='\n')
                 break
 
         return_states = []
@@ -184,7 +182,6 @@ class Trip():
 
     def get_state_from_key(self, key):
         ''' return state given its key'''
-        # print("key", key)
         state = {'pos': key[0]}
         state['schools'] = {}
         for element in key[1:len(key) - 1]:
@@ -238,24 +235,25 @@ class Trip():
         return sequence, travel_time
 
 
-    def run(self, max_iterations):
+    def run(self, first_school_id):
 
-        first_scool_pos = rd.choice(list(self.schools.keys()))
-        self.initial_school_id = first_scool_pos
+        self.initial_school_id = first_school_id
+        sequence = [first_school_id]
+        travel_time = 0
 
         # initialize current state and final state
-        current_state = {'pos': first_scool_pos}  # first node id
-        final_state = {'pos': first_scool_pos}
+        current_state = {'pos': first_school_id}  # first node id
+        final_state = {'pos': first_school_id}
         current_state['schools'] = self.schools
         final_state['schools'] = {}
         for school_id in self.schools.keys():
-            final_state['schools'][school_id] = [0] * len(self.agent.graph)  # no child left at school for each address
+            final_state['schools'][school_id] = [0] * len(self.agent.addresses)  # no child left at school for each address
         # empty bus
         current_state['bus'] = {}
         final_state['bus'] = {}
-        for i in range(len(self.agent.graph)):
-            current_state['bus'][i] = 0
-            final_state['bus'][i] = 0
+        for address in self.agent.addresses:
+            current_state['bus'][address] = 0
+            final_state['bus'][address] = 0
         current_state['action'] = ''
         final_state['action'] = ''
 
@@ -267,18 +265,8 @@ class Trip():
         self.initial_state_key = current_state_key
         self.final_state_key = final_state_key
         previous_q_value = 0
-        
-        it = 0
-
-        travel_times = []
-        sequence = [current_state]
-        sequence_nodes = [current_state['pos']]
-        travel_time = 0
-        print(current_state)
-        print(final_state)
-        count_restart = 0
-        last_restart = 0
-        while it < max_iterations:
+        count = 0
+        while current_state_key != final_state_key and count < 1000:
 
             # percept (current_state)
             # decide
@@ -286,8 +274,8 @@ class Trip():
             # execute
             next_state = self.choose_and_execute_next_action(current_state, next_possible_actions)
             # update
-            sequence.append(next_state)
-            sequence_nodes.append(next_state['pos'])
+            if current_state['pos'] != next_state['pos']:
+                sequence.append(next_state['pos'])
 
             if next_state['action'] == 'travel':
                 if current_state['pos'] == next_state['pos']:
@@ -311,32 +299,11 @@ class Trip():
 
             current_state_key = self.compute_state_key(current_state)
 
+            # current_action = choose_next_action(current_state)
+            # current_action_key = current_state + [current_action]
+            count += 1
 
-            if current_state_key == final_state_key:
-                current_state = self.get_state_from_key(self.initial_state_key)
-                current_state['pos'] = rd.choice(list(self.schools.keys()))
-                final_state['pos'] = current_state['pos']
-                final_state_key = self.compute_state_key(final_state)
-                self.initial_state_key = self.compute_state_key(current_state)
-                self.initial_school_id = final_state['pos']
-                current_state['action'] = 'restart'
-                # print(travel_time, sequence, sep='\n')
-                travel_times.append(travel_time)
-                travel_time = 0
-                # print("final_state",final_state, final_state_key, "current_state",current_state, self.initial_state_key, sep='\n')
-                # print("ITER", it)
-                count_restart += 1
-                last_restart = it
-
-            if it % 1000 == 0:
-                print(it, sequence_nodes[last_restart+1:], sep='\n')
-                
-
-            it += 1
-
-        # print(sequence, sep='\n')
-        print(count_restart)
-        return sequence, travel_times
+        return sequence, travel_time
 
 
 class Agent():
@@ -345,9 +312,8 @@ class Agent():
         self.schools = schools
  
         self.addresses = {}
-        # for address_id, pos in addresses:
-        #     print(address_id)
-        #     self.addresses[address_id] = Address(address_id, pos, address_id in schools.keys())
+        for address_id, pos in addresses:
+            self.addresses[address_id] = Address(address_id, pos, address_id in schools.keys())
         self.graph = graph
         self.capacity = capacity
         self.actions = {'pick', 'travel', 'drop'}
@@ -365,36 +331,31 @@ class Agent():
     # eventually add here the q-learning function
     def run(self, max_iterations):
 
-        trip = Trip(self, self.schools)
-        trip.run(max_iterations)
-        # count = len([item for item in self.q_values.items() if item > 0])
-        # print(self.q_values.items())
 
+        it = 0
+        while it < max_iterations:
 
-        # it = 0
-        # while it < max_iterations:
+            # what can we optimize?
+            # how children are chosen to take each bus -> how many at each time. Suppose the number of children % capacity != 0. How to divide them?
+            # which school should we choose first?
+            # group home adresses based on bus capacity?
+            # what should the agent learn?
 
-        #     # what can we optimize?
-        #     # how children are chosen to take each bus -> how many at each time. Suppose the number of children % capacity != 0. How to divide them?
-        #     # which school should we choose first?
-        #     # group home adresses based on bus capacity?
-        #     # what should the agent learn?
+            # each state is a solution OR each state is an unvisited node (see references)
+            trip = Trip(self, copy.deepcopy(self.schools))
 
-        #     # each state is a solution OR each state is an unvisited node (see references)
-        #     trip = Trip(self, copy.deepcopy(self.schools))
+            # add some information from the previous trip(s) to guide the next trip
+            # choose a school
+            random_school_id = rd.choice(list(self.schools.keys()))
 
-        #     # add some information from the previous trip(s) to guide the next trip
-        #     # choose a school
-        #     random_school_id = rd.choice(list(self.schools.keys()))
-
-        #     _ = trip.run(random_school_id)
+            sequence, travel_time = trip.run(random_school_id)
 
 
 
-        #     if it % 100 == 0:
-        #         sequence, travel_time = trip.recover_greedy_path()
-        #         print(travel_time, sequence, sep='\n')
+            if it % 100 == 0:
+                # sequence, travel_time = trip.recover_greedy_path()
+                print(travel_time, sequence, sep='\n')
 
-        #     # update q function etc and restart
-        #     it += 1
+            # update q function etc and restart
+            it += 1
 
