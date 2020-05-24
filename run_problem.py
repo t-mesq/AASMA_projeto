@@ -1,13 +1,28 @@
-# from graph import *
 import random  # to generate random distances while there is no connection to the API
 import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import enum
-
-
 import pylab as pl
 from agent import *
+import numpy as np
+
+
+def choose_grid(nr):
+    return nr // 4 + 1, 4
+
+def multiple_line_chart(ax: plt.Axes, xvalues: list, yvalues: dict, title: str, xlabel: str, ylabel: str, percentage=False):
+    legend: list = []
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    if percentage:
+        ax.set_ylim(0.0, 1.0)
+
+    for name, y in yvalues.items():
+        ax.plot(xvalues, y)
+        legend.append(name)
+    ax.legend(legend, loc='best', fancybox=True, shadow=True, borderaxespad=0)
 
 
 def read_adresses_input(filename):
@@ -57,7 +72,7 @@ def get_pos_from_coordinates(coordinates):
     return pos
 
 
-def print_path_graph(school_nodes, nodes, nodes_addresses, path):
+def print_path_graph(school_nodes, nodes, nodes_addresses, path, verbose=False):
     
     print( school_nodes, nodes, nodes_addresses, sep="\n")
 
@@ -72,11 +87,10 @@ def print_path_graph(school_nodes, nodes, nodes_addresses, path):
             sub_paths.append(sub_path)
             sub_path = []
 
-    print("Sup-paths:", sub_paths)
 
     G = nx.MultiDiGraph()
     pos = get_pos_from_coordinates(nodes_addresses)
-    print(pos)
+
     plt.figure(figsize=(5, 5))
 
     for i, sub_path in enumerate(sub_paths):
@@ -100,7 +114,10 @@ def print_path_graph(school_nodes, nodes, nodes_addresses, path):
 
         # nx.draw_networkx(graph, pos=nx.spring_layout(), node_color=colors)
     # plt.show()
-    print("Graph:", G.graph, G.edges, G.nodes, sep='\n')
+    if verbose:
+        print("Sup-paths:", sub_paths)
+        print("Positions:", pos)
+        print("Graph:", G.graph, G.edges, G.nodes, sep='\n')
     # plt.show()
     return sub_paths
 
@@ -167,7 +184,7 @@ def main(arg: list = []) -> None:
     capacity, max_iterations, school_ids, schools_list, adj_matrix, addresses = read_adresses_input(filename)
 
     path = (2, 3, 4, 1, 5, 7, 1, 6, 2, 0, 5, 1, 2, 1) #just an example
-    print_path_graph(school_ids, adj_matrix, addresses, path)
+    # print_path_graph(school_ids, adj_matrix, addresses, path)
 
     number_nodes = len(adj_matrix)
 
@@ -210,7 +227,12 @@ def main(arg: list = []) -> None:
 
     if mode == Mode.Single:
         agent = Agent(schools_list, adj_matrix, capacity, max_iterations=max_iterations)
-        agent.run()
+        times, sequence = agent.run()
+        print(sequence, times)
+        print_path_graph(school_ids, adj_matrix, addresses, sequence)
+        plt.show()
+        multiple_line_chart(plt.gca(), list(range(len(times))), {"sad": times}, "20/20", "WHY", "GOD")
+        plt.show()
     else:
         lock = defaultdict(lambda: threading.Lock())
         Q = defaultdict(int)

@@ -100,13 +100,14 @@ def get_distance_matrix(coordinates):
     )
 
 
-def generate_map_file(school_coordinates, capacity, offset=0.1, n_points=80, n_adresses=8, filename="generated_map.txt"):
+def generate_map_file(school_coordinates, capacity, offset=0.1, n_points=80, n_adresses=8, iterations=10000, filename="generated_map.txt"):
     coordinates, adresses_distribution = generate_coordinates(school_coordinates, offset, n_points, n_adresses, seed=10)
     matrix = get_distance_matrix(coordinates)
     schools_distribution = distribute_adresses(adresses_distribution, len(school_coordinates))
 
     f = open(filename, "w+")
     lines = ["capacity " + str(capacity)]
+    lines.append("iterations " + str(iterations))
     schools = "schools "
     for i in range(len(school_coordinates)):
         schools += str(i) + " "
@@ -126,7 +127,7 @@ def generate_map_file(school_coordinates, capacity, offset=0.1, n_points=80, n_a
 
 
 def main():
-    generate_map_file([[13.384116, 52.533558], [13.428726, 52.519355]], 10, 0.1, 10, 6)
+    generate_map_file([[13.384116, 52.533558], [13.428726, 52.519355]], 10, 0.1, 30, 8, 10000000)
 
 
 if __name__ == "__main__":

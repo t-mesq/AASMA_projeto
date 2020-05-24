@@ -327,23 +327,22 @@ class Trip():
                 self.initial_state_key = self.compute_state_key(current_state)
                 self.initial_school_id = final_state['pos']
                 current_state['action'] = 'restart'
-                # print(travel_time, sequence, sep='\n')
-                travel_times.append(travel_time)
                 travel_time = 0
-                # print("final_state",final_state, final_state_key, "current_state",current_state, self.initial_state_key, sep='\n')
-                # print("ITER", it)
+
+                if count_restart % 10 == 0:
+                    sequence, time = self.recover_greedy_path()
+                    travel_times.append(time)
+                    print("trip " + str(count_restart) + ": " + str(self.agent.epsilon), sequence, time, sep='\n')
+
                 count_restart += 1
                 last_restart = it
-
-            if it % 100000 == 0:
-                print(str(it) + " " + str(self.agent.epsilon), self.recover_greedy_path(), sep='\n')
                 
 
             it += 1
 
         # print(sequence, sep='\n')
         print(count_restart)
-        return sequence, travel_times
+        return travel_times, self.recover_greedy_path()[0]
 
 
 class Agent():
@@ -377,7 +376,7 @@ class Agent():
     # eventually add here the q-learning function
     def run(self):
         trip = Trip(self, self.schools)
-        trip.run(self.max_iterations)
+        return trip.run(self.max_iterations)
 
 
 class ThreadingAgent(Agent, threading.Thread):
