@@ -1,5 +1,5 @@
 capacity 5
-iterations 1000
+iterations 10000
 schools 2
 0 0 4 5 0 0 3 0 0 6 0 2 3 0 5 5
 7 0 0 0 7 5 0 2 0 3 2 0 0 10 0 4

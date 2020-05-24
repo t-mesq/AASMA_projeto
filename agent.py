@@ -5,6 +5,7 @@ from collections import defaultdict
 from functools import partial
 from itertools import repeat
 import math
+import threading
 
 
 def nested_defaultdict(default_factory, depth=1):
@@ -61,14 +62,14 @@ class Trip():
         possible_actions = []
         position = current_state['pos']
         capacity = self.agent.capacity - sum(current_state['bus'].values())
-        # at a school with capacity to pick kids and there are kids at that school
-        if position in current_state['schools'].keys() and capacity > 0 and sum(current_state['schools'][position]) > 0:
-            possible_actions.append('pick')
         # at a home address and there are kids to drop at that address
-        if position in current_state['bus'].keys() and current_state['bus'][position] > 0:
+        if position not in current_state['schools'].keys() and position in current_state['bus'].keys() and current_state['bus'][position] > 0:
             possible_actions.append('drop')
+        # at a school with capacity to pick kids and there are kids at that school
         else:
             possible_actions.append('travel')
+            if position in current_state['schools'].keys() and capacity > 0 and sum(current_state['schools'][position]) > 0:
+                possible_actions.append('pick')
 
         # print("get_possible_actions", possible_actions)
         return self.compute_possible_action_results(current_state, possible_actions), possible_actions
@@ -96,9 +97,9 @@ class Trip():
                 next_state['action'] = 'drop'
                 possible_actions_results.append(next_state)
             if action == 'pick':
-                possible_actions_results +=  self.pick_children_from_school(current_state)
+                possible_actions_results += self.pick_children_from_school(current_state)
             if action == 'travel':
-                possible_actions_results +=  self.possible_states_to_travel_to(current_state)
+                possible_actions_results += self.possible_states_to_travel_to(current_state)
 
         # if not possible_actions_results:
         #     print(actions)
@@ -138,16 +139,16 @@ class Trip():
         possible_successors = []
         # every node is a possible successor
         for node_id in range(len(self.agent.graph)):
-            if node_id in current_state['bus'].keys() and current_state['bus'][node_id] > 0:
+            if node_id == current_state['pos']:
+                continue
+            elif node_id not in current_state['schools'].keys() and node_id in current_state['bus'].keys() and current_state['bus'][node_id] > 0:
                 possible_successors.append(node_id)
-            elif self.agent.capacity - sum(current_state['bus'].values()) > 0 and (node_id in self.schools.keys() and sum(current_state['schools'][node_id]) > 0):
+            #elif self.agent.capacity - sum(current_state['bus'].values()) > 0 and (node_id in self.schools.keys() and sum(current_state['schools'][node_id]) > 0):
+            elif node_id in self.schools.keys() and (self.agent.capacity - sum(current_state['bus'].values()) > 0) and sum(current_state['schools'][node_id]) > 0:
                 possible_successors.append(node_id)
-            elif sum(current_state['bus'].values()) == 0 and all([sum(current_state['schools'][key]) == 0 for key in current_state['schools'].keys()]):
-                possible_successors.append(self.initial_school_id)
-                # print("HERE")
-                # print(self.initial_state_key, self.final_state_key, sep='\n')
-                break
-
+        #in the end the agent may return to the final schooç
+        if sum(current_state['bus'].values()) == 0 and not any(sum(current_state['schools'][school_id]) > 0 for school_id in self.schools.keys()):
+            possible_successors.append(self.final_state_key[0])
         return_states = []
         for suc in possible_successors:
             next_state = copy.deepcopy(current_state)
@@ -164,7 +165,7 @@ class Trip():
         maximizer = possible_actions[0]
         q_values = [[self.agent.get_q_value((self.compute_state_key(current_state), self.compute_state_key(action))), action] for action in possible_actions]
         if all(elem[0] == q_values[0][0] for elem in q_values):
-            maximizer = rd.choice(possible_actions)
+            maximizer = rd.choice(possible_actions) #FIXME
         else:
             maximizer = max(q_values, key=lambda elem: elem[0])[1]
         return maximizer
@@ -200,19 +201,20 @@ class Trip():
         current_state_key = self.initial_state_key
         final_state_key = self.final_state_key
         current_state = self.get_state_from_key(current_state_key)
-        sequence = [current_state]
+        sequence = [current_state['pos']]
         travel_time = 0
-        while current_state_key != final_state_key:
+        iterations = 0
+        while current_state_key != final_state_key and iterations < 200:
             # percept (current_state)
             # decide
             next_possible_actions, actions = self.get_possible_actions(current_state)
             # execute
-            next_state = self.choose_and_execute_next_action(current_state, next_possible_actions)
+            next_state = self.choose_and_execute_next_action(current_state, next_possible_actions, greedy=True)
             # update
             # if current_state['pos'] != next_state['pos']:
             #     sequence.append(next_state['pos'])
 
-            sequence.append(next_state)
+            sequence.append(next_state["pos"])
 
             if next_state['action'] == 'travel':
                 if current_state['pos'] == next_state['pos']:
@@ -235,6 +237,9 @@ class Trip():
             current_state = next_state
 
             current_state_key = self.compute_state_key(current_state)
+            iterations += 1
+            # print(current_state_key)
+
         return sequence, travel_time
 
 
@@ -274,8 +279,8 @@ class Trip():
         sequence = [current_state]
         sequence_nodes = [current_state['pos']]
         travel_time = 0
-        print(current_state)
-        print(final_state)
+        # print(current_state)
+        # print(final_state)
         count_restart = 0
         last_restart = 0
         while it < max_iterations:
@@ -328,8 +333,8 @@ class Trip():
                 count_restart += 1
                 last_restart = it
 
-            if it % 1000 == 0:
-                print(it, sequence_nodes[last_restart+1:], sep='\n')
+            if it % 100000 == 0:
+                print(it, self.recover_greedy_path(), sep='\n')
                 
 
             it += 1
@@ -339,9 +344,10 @@ class Trip():
         return sequence, travel_times
 
 
-class Agent():
+class Agent(threading.Thread):
 
-    def __init__(self, addresses, schools, graph, capacity, epsilon = 0.2, learning_rate = 0.8, discount = 0.9):
+    def __init__(self, lock, q_values, schools, graph, capacity, epsilon = 0.2, learning_rate = 0.8, discount = 0.9, max_iterations=10000):
+        threading.Thread.__init__(self)
         self.schools = schools
  
         self.addresses = {}
@@ -351,22 +357,30 @@ class Agent():
         self.graph = graph
         self.capacity = capacity
         self.actions = {'pick', 'travel', 'drop'}
-        self.q_values = defaultdict(int)
+        self.q_values = q_values
         self.epsilon = epsilon
         self.learning_rate = learning_rate
         self.discount = discount
+        self.lock = lock
+        self.max_iterations = max_iterations
 
     def get_q_value(self, key):
-        return self.q_values[key]
+        self.lock.acquire()
+        try:
+            return self.q_values[key]
+        finally:
+            self.lock.release()
 
     def update_q_value(self, key, value):
+        self.lock.acquire()
         self.q_values[key] = value
+        self.lock.release()
 
     # eventually add here the q-learning function
-    def run(self, max_iterations):
+    def run(self):
 
         trip = Trip(self, self.schools)
-        trip.run(max_iterations)
+        trip.run(self.max_iterations)
         # count = len([item for item in self.q_values.items() if item > 0])
         # print(self.q_values.items())
 
