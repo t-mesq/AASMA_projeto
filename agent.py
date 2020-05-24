@@ -336,7 +336,7 @@ class Trip():
                 last_restart = it
 
             if it % 100000 == 0:
-                print(it + " " + self.agent.epsilon, self.recover_greedy_path(), sep='\n')
+                print(str(it) + " " + str(self.agent.epsilon), self.recover_greedy_path(), sep='\n')
                 
 
             it += 1
