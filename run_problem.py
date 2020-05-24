@@ -203,10 +203,10 @@ def main(arg: list = []) -> None:
 
     # nx.draw(graph, pos_list, node_color=colors)
     # plt.show()
-    lock = threading.Lock()
+    lock = defaultdict(lambda: threading.Lock())
     Q = defaultdict(int)
 
-    for i in range(2):
+    for i in range(1):
         agent = Agent(lock, Q, schools_list, adj_matrix, capacity, max_iterations=max_iterations)
         agent.start()
     #agent.get_solution()

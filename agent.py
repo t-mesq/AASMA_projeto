@@ -78,7 +78,7 @@ class Trip():
 
         if not greedy:
             prob = rd.uniform(0, 1)
-            greedy = prob < self.agent.epsilon
+            greedy = prob > self.agent.epsilon
 
         if greedy:
             return self.get_max_action(current_state, possible_actions_results)
@@ -165,7 +165,7 @@ class Trip():
         maximizer = possible_actions[0]
         q_values = [[self.agent.get_q_value((self.compute_state_key(current_state), self.compute_state_key(action))), action] for action in possible_actions]
         if all(elem[0] == q_values[0][0] for elem in q_values):
-            maximizer = rd.choice(possible_actions) #FIXME
+            maximizer = rd.choice(possible_actions)
         else:
             maximizer = max(q_values, key=lambda elem: elem[0])[1]
         return maximizer
@@ -238,7 +238,7 @@ class Trip():
 
             current_state_key = self.compute_state_key(current_state)
             iterations += 1
-            # print(current_state_key)
+            # print(current_state)
 
         return sequence, travel_time
 
@@ -316,6 +316,8 @@ class Trip():
 
             current_state_key = self.compute_state_key(current_state)
 
+            self.agent.update_epsilon()
+
 
             if current_state_key == final_state_key:
                 current_state = self.get_state_from_key(self.initial_state_key)
@@ -334,7 +336,7 @@ class Trip():
                 last_restart = it
 
             if it % 100000 == 0:
-                print(it, self.recover_greedy_path(), sep='\n')
+                print(it + " " + self.agent.epsilon, self.recover_greedy_path(), sep='\n')
                 
 
             it += 1
@@ -346,7 +348,7 @@ class Trip():
 
 class Agent(threading.Thread):
 
-    def __init__(self, lock, q_values, schools, graph, capacity, epsilon = 0.2, learning_rate = 0.8, discount = 0.9, max_iterations=10000):
+    def __init__(self, lock, q_values, schools, graph, capacity, epsilon=0.8, learning_rate=0.8, discount=0.9, max_iterations=10000, rand_factor=0.01):
         threading.Thread.__init__(self)
         self.schools = schools
  
@@ -363,18 +365,23 @@ class Agent(threading.Thread):
         self.discount = discount
         self.lock = lock
         self.max_iterations = max_iterations
+        self.rand_factor = rand_factor
+        self.dec = (epsilon-rand_factor)/max_iterations
+
+    def update_epsilon(self):
+        self.epsilon = max(self.epsilon - self.dec, self.rand_factor);
 
     def get_q_value(self, key):
-        self.lock.acquire()
+        self.lock[key].acquire()
         try:
             return self.q_values[key]
         finally:
-            self.lock.release()
+            self.lock[key].release()
 
     def update_q_value(self, key, value):
-        self.lock.acquire()
+        self.lock[key].acquire()
         self.q_values[key] = value
-        self.lock.release()
+        self.lock[key].release()
 
     # eventually add here the q-learning function
     def run(self):
