@@ -35,7 +35,6 @@ def read_adresses_input(filename):
             nodes.append(list(map(int, line.split())))
             read_nodes -= 1
         else:
-            print(line)
             nodes_addresses.append(eval(line))
 
     return capacity, iterations, school_nodes, schools, nodes, nodes_addresses
@@ -56,7 +55,7 @@ def get_pos_from_coordinates(coordinates):
     return pos
 
 
-def print_path_graph(school_nodes, nodes, nodes_addresses, path):
+def print_path_graph(school_nodes, nodes, nodes_addresses, path=[]):
     
     print( school_nodes, nodes, nodes_addresses, sep="\n")
 
@@ -165,49 +164,18 @@ def main(arg: list = []) -> None:
 
     capacity, max_iterations, school_ids, schools_list, adj_matrix, addresses = read_adresses_input(filename)
 
-    path = (2, 3, 4, 1, 5, 7, 1, 6, 2, 0, 5, 1, 2, 1) #just an example
-    print_path_graph(school_ids, adj_matrix, addresses, path)
+    # path = (2, 3, 4, 1, 5, 7, 1, 6, 2, 0, 5, 1, 2, 1) #just an example
+    # print_path_graph(school_ids, adj_matrix, addresses, path)
 
     number_nodes = len(adj_matrix)
 
-    # # create edges list considering a complete graph
-    # edges_list = []
-    # # print("nodes_list", nodes_list)
-    # for i, pos in nodes_list:
-    #     for j, pos in nodes_list:
-    #         if i == j:
-    #             continue
-    #         # get distance between u and v using the Google API (for now it is random)
-    #         dist = random.randint(1, 100)  # distance from u to v might be different from v to u (there might be one way streets, for example)
-    #         edges_list.append([[i, j], dist])
-
-    # graph = nx.DiGraph()
-    # # print("schools_ids", schools.keys())
-    # colors = ['blue' if n not in schools.keys() else 'orange' for n in range(number_nodes)]
-
-    # # print("schools")
-    # for i, pos in nodes_list:
-    #     graph.add_node(i, pos = pos, node_id = i)
-    #     # if i not in schools_ids:
-    #     #     if school_id in schools.keys():
-    #     #         schools[school_id].append(i)
-    #     #     else:
-    #     #         schools[school_id] = [i]
-    # # print("graph.nodes", graph.nodes)
     print("schools", schools_list)
 
-    # for e, w in edges_list:
-    #     graph.add_edge(e[0], e[1], weight=w)
-
-    # pos_list = nx.get_node_attributes(graph, 'pos')
-
-    # nx.draw(graph, pos_list, node_color=colors)
-    # plt.show()
     lock = defaultdict(lambda: threading.Lock())
     Q = defaultdict(int)
 
     for i in range(1):
-        agent = Agent(lock, Q, schools_list, adj_matrix, capacity, max_iterations=max_iterations)
+        agent = Agent(lock, Q, schools_list, adj_matrix, capacity, max_iterations=max_iterations, agent_id=i)
         agent.start()
     #agent.get_solution()
 
