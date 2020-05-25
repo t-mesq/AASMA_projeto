@@ -24,8 +24,19 @@ def multiple_line_chart(ax: plt.Axes, xvalues: list, yvalues: dict, title: str, 
         legend.append(name)
     ax.legend(legend, loc='best', fancybox=True, shadow=True, borderaxespad=0)
 
+def bar_chart(ax: plt.Axes, xvalues: list, yvalues: list, title: str, xlabel: str, ylabel: str, step: int, percentage=False, reverse=None):
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
 
-def read_adresses_input(filename):
+    x_labels = list(map(str, xvalues))
+    ax.bar(xvalues, yvalues, width=0.6*step)
+    ax.set_xticks(xvalues)
+    ax.set_xticklabels(x_labels, rotation=90, fontsize='small')
+
+
+
+def read_addresses_input(filename):
     nodes = []
     nodes_addresses = []
     read_nodes = 0
@@ -111,8 +122,6 @@ def print_path_graph(school_nodes, nodes, nodes_addresses, path=[], verbose=Fals
     nx.draw_networkx_nodes(G, pos, node_size=200, node_color=colors, alpha=0.5)
     nx.draw_networkx_labels(G, pos, font_size=10)
 
-        # nx.draw_networkx(graph, pos=nx.spring_layout(), node_color=colors)
-    # plt.show()
     if verbose:
         print("Sup-paths:", sub_paths)
         print("Positions:", pos)
@@ -166,15 +175,11 @@ def read_input(filename):
 
 
 
-def main(arg: list = []) -> None:
-
-
-    
-    
+def main(arg: list = []) -> None:   
 
     if len(arg) < 2:
         print("The correct way to run is: python run_problem.py <file>")
-        continue_program = str(input("Do you want to continue using the file sample.txt? [y/n]"))
+        continue_program = str(input("Do you want to continue using the file generated_map.txt? [y/n]"))
         if continue_program == "n":
             sys.exit()
         else:
@@ -184,7 +189,7 @@ def main(arg: list = []) -> None:
 
 
     # read list of nodes from file
-    capacity, max_iterations, school_ids, schools_list, adj_matrix, addresses = read_adresses_input(filename)
+    capacity, max_iterations, school_ids, schools_list, adj_matrix, addresses = read_addresses_input(filename)
 
     print("schools", schools_list)
 
@@ -194,13 +199,27 @@ def main(arg: list = []) -> None:
 
 
     if mode == Mode.Single:
-        agent = Agent(schools_list, adj_matrix, capacity, max_iterations=max_iterations)
-        sequence, times = agent.run()
-        # print(sequence, times)
+        learning_rate = 0.9
+        agent = Agent(schools_list, adj_matrix, capacity, learning_rate = learning_rate, max_iterations=max_iterations)
+        sequence, times, restart_counts = agent.run()
+
+        # number of restarts plot
+        step = int(max_iterations/len(restart_counts))
+        x_axis = [x for x in range(step, max_iterations+step, step)]
+        bar_chart(plt.gca(),  x_axis,restart_counts, "Number of restarts by " + str(step) + " iterations", "Iterations", "Number of restarts", step)
+        plt.savefig("number_of_restarts" + filename + ".png", bbox_inches='tight', dpi=300)
+        plt.clf()
+
+        # last path graph plot
         print_path_graph(school_ids, adj_matrix, addresses, sequence)
-        plt.show()
-        multiple_line_chart(plt.gca(), list(range(len(times))), {"sad": times}, "20/20", "WHY", "GOD")
-        plt.show()
+        plt.savefig("graph_"+filename+".png")
+        plt.clf()
+
+        # travel times plot
+        multiple_line_chart(plt.gca(), list(range(len(times))), {"learning rate " + str(learning_rate): times}, "Greedy Path duration per 10 restarts", "Route Restarts (10)", "Greedy path duration")
+        plt.savefig("figure_"+filename+".png")
+        plt.clf()
+
     else:
         lock = defaultdict(lambda: threading.Lock())
         Q = defaultdict(int)

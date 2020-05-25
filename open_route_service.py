@@ -32,7 +32,7 @@ def example():
     m.save("map.html")
 
 
-def distribute_adresses(distribution, n_schools):
+def distribute_addresses(distribution, n_schools):
     students_distribution = distribution.copy()
     schools_distribution = [[0] * len(distribution) for _ in range(n_schools)]
 
@@ -43,20 +43,20 @@ def distribute_adresses(distribution, n_schools):
     return schools_distribution
 
 
-def generate_coordinates(origins, offset, n_points, n_adresses, seed=0, draw=True):
+def generate_coordinates(origins, offset, n_points, n_addresses, seed=0, draw=True):
     random.seed(seed)
     np.random.seed(seed)
-    adresses = np.array([(random.choice(origins)[0] + random.uniform(-1, 1) * offset, random.choice(origins)[1] + random.uniform(-1, 1) * offset) for _ in range(n_points)])
+    addresses = np.array([(random.choice(origins)[0] + random.uniform(-1, 1) * offset, random.choice(origins)[1] + random.uniform(-1, 1) * offset) for _ in range(n_points)])
 
-    kmeans = KMeans(init='k-means++', n_clusters=n_adresses, n_init=10)
-    kmeans.fit(adresses)
+    kmeans = KMeans(init='k-means++', n_clusters=n_addresses, n_init=10)
+    kmeans.fit(addresses)
 
     # Step size of the mesh. Decrease to increase the quality of the VQ.
     h = offset * 0.01  # point in the mesh [x_min, x_max]x[y_min, y_max].
 
     # Plot the decision boundary. For that, we will assign a color to each
-    x_min, x_max = adresses[:, 0].min() - offset, adresses[:, 0].max() + offset
-    y_min, y_max = adresses[:, 1].min() - offset, adresses[:, 1].max() + offset
+    x_min, x_max = addresses[:, 0].min() - offset, addresses[:, 0].max() + offset
+    y_min, y_max = addresses[:, 1].min() - offset, addresses[:, 1].max() + offset
     xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
 
     # Obtain labels for each point in mesh. Use last trained model.
@@ -73,7 +73,7 @@ def generate_coordinates(origins, offset, n_points, n_adresses, seed=0, draw=Tru
                    cmap=plt.cm.tab20,
                    aspect='auto', origin='lower')
 
-        plt.plot(adresses[:, 0], adresses[:, 1], 'k.', markersize=2)
+        plt.plot(addresses[:, 0], addresses[:, 1], 'k.', markersize=2)
         # Plot the centroids as a white X
         plt.scatter(centroids[:, 0], centroids[:, 1],
                     marker='x', s=150, linewidths=3,
@@ -88,7 +88,7 @@ def generate_coordinates(origins, offset, n_points, n_adresses, seed=0, draw=Tru
         plt.yticks(())
         plt.show()
 
-    return origins + list(map(list, centroids)), [list(kmeans.labels_).count(i) for i in range(n_adresses)]
+    return origins + list(map(list, centroids)), [list(kmeans.labels_).count(i) for i in range(n_addresses)]
 
 
 def get_distance_matrix(coordinates):
@@ -100,10 +100,10 @@ def get_distance_matrix(coordinates):
     )
 
 
-def generate_map_file(school_coordinates, capacity, offset=0.1, n_points=80, n_adresses=8, iterations=10000, filename="generated_map.txt"):
-    coordinates, adresses_distribution = generate_coordinates(school_coordinates, offset, n_points, n_adresses, seed=10)
+def generate_map_file(school_coordinates, capacity, offset=0.1, n_points=80, n_addresses=8, iterations=10000, filename="generated_map.txt"):
+    coordinates, addresses_distribution = generate_coordinates(school_coordinates, offset, n_points, n_addresses, seed=10)
     matrix = get_distance_matrix(coordinates)
-    schools_distribution = distribute_adresses(adresses_distribution, len(school_coordinates))
+    schools_distribution = distribute_addresses(addresses_distribution, len(school_coordinates))
 
     f = open(filename, "w+")
     lines = ["capacity " + str(capacity)]
@@ -114,7 +114,7 @@ def generate_map_file(school_coordinates, capacity, offset=0.1, n_points=80, n_a
     lines.append(schools[:-1])
     for school_distribution in schools_distribution:
         lines.append(' '.join(list(map(str, [0]*len(school_coordinates) + school_distribution))))
-    lines.append("nodes " + str(len(school_coordinates) + n_adresses))
+    lines.append("nodes " + str(len(school_coordinates) + n_addresses))
     for line in matrix["durations"]:
         str_line = ""
         for duration in line:
@@ -127,7 +127,14 @@ def generate_map_file(school_coordinates, capacity, offset=0.1, n_points=80, n_a
 
 
 def main():
-    generate_map_file([[13.384116, 52.533558], [13.428726, 52.519355]], 10, 0.1, 30, 8, 10000000)
+
+    if len(arg) < 2:
+        filename = "generated_map.txt"
+    else:
+        filename = arg[1]
+
+
+    generate_map_file([[13.384116, 52.533558], [13.428726, 52.519355]], 10, 0.1, 30, 8, 10000000, filename)
 
 
 if __name__ == "__main__":
