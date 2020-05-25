@@ -168,6 +168,10 @@ def read_input(filename):
 
 def main(arg: list = []) -> None:
 
+
+    
+    
+
     if len(arg) < 2:
         print("The correct way to run is: python run_problem.py <file>")
         continue_program = str(input("Do you want to continue using the file sample.txt? [y/n]"))
@@ -178,32 +182,21 @@ def main(arg: list = []) -> None:
     else:
         filename = arg[1]
 
+
     # read list of nodes from file
-
     capacity, max_iterations, school_ids, schools_list, adj_matrix, addresses = read_adresses_input(filename)
-
-    # path = (2, 3, 4, 1, 5, 7, 1, 6, 2, 0, 5, 1, 2, 1) #just an example
-    # print_path_graph(school_ids, adj_matrix, addresses, path)
-
-    number_nodes = len(adj_matrix)
 
     print("schools", schools_list)
 
-    # for e, w in edges_list:
-    #     graph.add_edge(e[0], e[1], weight=w)
-
-    # pos_list = nx.get_node_attributes(graph, 'pos')
-
-    # nx.draw(graph, pos_list, node_color=colors)
-    # plt.show()
     Mode = enum.Enum("Mode", "Single Threaded")
     mode = Mode.Single
     # mode = Mode.Threaded
 
+
     if mode == Mode.Single:
         agent = Agent(schools_list, adj_matrix, capacity, max_iterations=max_iterations)
         sequence, times = agent.run()
-        print(sequence, times)
+        # print(sequence, times)
         print_path_graph(school_ids, adj_matrix, addresses, sequence)
         plt.show()
         multiple_line_chart(plt.gca(), list(range(len(times))), {"sad": times}, "20/20", "WHY", "GOD")
