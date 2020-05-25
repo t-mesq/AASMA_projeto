@@ -2,6 +2,9 @@ import random  # to generate random distances while there is no connection to th
 import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+from statsmodels.tsa.seasonal import seasonal_decompose
+from sklearn import neighbors
+import pandas as pd
 import enum
 import pylab as pl
 from agent import *
@@ -10,6 +13,7 @@ import numpy as np
 
 def choose_grid(nr):
     return nr // 4 + 1, 4
+
 
 def multiple_line_chart(ax: plt.Axes, xvalues: list, yvalues: dict, title: str, xlabel: str, ylabel: str, percentage=False):
     legend: list = []
@@ -20,9 +24,68 @@ def multiple_line_chart(ax: plt.Axes, xvalues: list, yvalues: dict, title: str, 
         ax.set_ylim(0.0, 1.0)
 
     for name, y in yvalues.items():
-        ax.plot(xvalues, y)
+        if xvalues == None:
+            ax.plot(list(range(len(y))), y)
+        else:
+            ax.plot(xvalues, y)
         legend.append(name)
     ax.legend(legend, loc='best', fancybox=True, shadow=True, borderaxespad=0)
+
+
+def time_series_decompositions(timeseries, xlabel: str = None, ylabel: str = None, show=False):
+    decomposition = seasonal_decompose(timeseries, model='additive', period=20)
+    trend = decomposition.trend
+    seasonal = decomposition.seasonal
+    residual = decomposition.resid
+
+    if show:
+        plt.subplot(411, )
+        if ylabel:
+            plt.gca().set_ylabel(ylabel)
+        plt.plot(timeseries, label='Original')
+        plt.legend(loc='best')
+        plt.subplot(412)
+        plt.plot(trend, label='Trend')
+        plt.legend(loc='best')
+        plt.subplot(413)
+        plt.plot(seasonal, label='Seasonality')
+        plt.legend(loc='best')
+        plt.subplot(414)
+        plt.plot(residual, label='Residuals')
+        plt.legend(loc='best')
+        plt.tight_layout()
+        if xlabel:
+            plt.gca().set_xlabel(xlabel)
+        plt.show()
+
+    return trend
+
+
+def knn_regression(series, xlabel: str = None, ylabel: str = None, show=True):
+    y = np.array(series)[:, np.newaxis]
+    T = np.arange(len(series))[:, np.newaxis]
+    X = T.copy()
+
+    # 2. fit KNN regression model
+    n_neighbors = 10
+    knn = neighbors.KNeighborsRegressor(n_neighbors, weights='uniform')
+    y_ = knn.fit(T, y).predict(T)
+
+    if show:
+        # 3. plot utils
+        plt.scatter(X, y, c='k', label='data', s=20)
+        plt.plot(T, y_, c='g', label='prediction')
+        plt.axis('tight')
+        plt.legend()
+        if xlabel:
+            plt.gca().set_xlabel(xlabel)
+        if ylabel:
+            plt.gca().set_ylabel(ylabel)
+        plt.title("Knn uniform regression of (k = %i)" % n_neighbors)
+        plt.tight_layout()
+        plt.show()
+
+    return y_
 
 
 def read_adresses_input(filename):
@@ -43,7 +106,7 @@ def read_adresses_input(filename):
             school_nodes = list(map(int, value.split(' ')))
             read_schools = len(school_nodes)
         elif read_schools > 0:
-            schools[school_nodes[len(school_nodes)-read_schools]] = list(map(int, line.split(' ')))
+            schools[school_nodes[len(school_nodes) - read_schools]] = list(map(int, line.split(' ')))
             read_schools -= 1
         elif read_parameter == 'nodes':
             read_nodes = int(value)
@@ -54,6 +117,7 @@ def read_adresses_input(filename):
             nodes_addresses.append(eval(line))
 
     return capacity, iterations, school_nodes, schools, nodes, nodes_addresses
+
 
 def get_pos_from_coordinates(coordinates):
     pos = {}
@@ -67,13 +131,11 @@ def get_pos_from_coordinates(coordinates):
     for i, (x, y) in enumerate(coordinates):
         pos[i] = ((x - min_x) / offset_x, (y - min_y) / offset_y)
 
-
     return pos
 
 
 def print_path_graph(school_nodes, nodes, nodes_addresses, path=[], verbose=False):
-
-    print( school_nodes, nodes, nodes_addresses, sep="\n")
+    print(school_nodes, nodes, nodes_addresses, sep="\n")
 
     number_nodes = len(nodes)
 
@@ -85,7 +147,6 @@ def print_path_graph(school_nodes, nodes, nodes_addresses, path=[], verbose=Fals
         if path[i + 1] in school_nodes:
             sub_paths.append(sub_path)
             sub_path = []
-
 
     G = nx.MultiDiGraph()
     pos = get_pos_from_coordinates(nodes_addresses)
@@ -99,7 +160,7 @@ def print_path_graph(school_nodes, nodes, nodes_addresses, path=[], verbose=Fals
             pos,
             edgelist=[(x, y, i) for x, y in sub_path],
             connectionstyle="arc3,rad=0.1",
-            edge_color=[i]*len(sub_path),
+            edge_color=[i] * len(sub_path),
             edge_cmap=plt.cm.Set1,
             edge_vmin=float(0),
             edge_vmax=float(len(sub_paths)),
@@ -111,7 +172,7 @@ def print_path_graph(school_nodes, nodes, nodes_addresses, path=[], verbose=Fals
     nx.draw_networkx_nodes(G, pos, node_size=200, node_color=colors, alpha=0.5)
     nx.draw_networkx_labels(G, pos, font_size=10)
 
-        # nx.draw_networkx(graph, pos=nx.spring_layout(), node_color=colors)
+    # nx.draw_networkx(graph, pos=nx.spring_layout(), node_color=colors)
     # plt.show()
     if verbose:
         print("Sup-paths:", sub_paths)
@@ -165,51 +226,109 @@ def read_input(filename):
     return capacity, max_iterations, nodes, schools
 
 
+def single_time_analysis(times, learning_rate):
+    trend = time_series_decompositions(times, "Route Restarts (10)", "Greedy path duration", show=True)
+    knn_line = knn_regression(times, "Route Restarts (10)", "Greedy path duration", show=True)
+    multiple_line_chart(plt.gca(),
+                        list(range(len(times))),
+                        {"learning rate " + str(learning_rate): times, "knn regression (K=10)": knn_line, "TS trend (T=30)": trend},
+                        "Greedy Path duration per 10 restarts",
+                        "Route Restarts (10)",
+                        "Greedy path duration")
+    plt.show()
+
+
+def single_time_analysis(times, learning_rate):
+    trend = time_series_decompositions(times, "Route Restarts (10)", "Greedy path duration", show=True)
+    knn_line = knn_regression(times, "Route Restarts (10)", "Greedy path duration", show=True)
+    multiple_line_chart(plt.gca(),
+                        list(range(len(times))),
+                        {"learning rate " + str(learning_rate): times, "knn regression (K=10)": knn_line, "TS trend (T=30)": trend},
+                        "Greedy Path duration per 10 restarts",
+                        "Route Restarts (10)",
+                        "Greedy path duration")
+    plt.show()
+
 
 def main(arg: list = []) -> None:
-
-
-    
-    
-
+    filename = 'generated_map_2.txt'
     if len(arg) < 2:
         print("The correct way to run is: python run_problem.py <file>")
-        continue_program = str(input("Do you want to continue using the file sample.txt? [y/n]"))
+        continue_program = str(input("Do you want to continue using the file " + filename + " [y/n]"))
         if continue_program == "n":
             sys.exit()
-        else:
-            filename = 'generated_map.txt'
     else:
         filename = arg[1]
-
 
     # read list of nodes from file
     capacity, max_iterations, school_ids, schools_list, adj_matrix, addresses = read_adresses_input(filename)
 
     print("schools", schools_list)
 
-    Mode = enum.Enum("Mode", "Single Threaded")
+    Mode = enum.Enum("Mode", "Single Multi Threaded")
     mode = Mode.Single
+    Test = enum.Enum("Test", "LearningRate DiscountFactor Epsilon")
+    test = Test.Epsilon
     # mode = Mode.Threaded
-
+    learning_rate = 0.9
+    discount_factor = 0.9
+    epsilon = 0.01
+    learning_rates = (0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.9, 1)
+    discount_factors = (0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.9, 1)
+    epsilons = (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.9, 1)
 
     if mode == Mode.Single:
-        agent = Agent(schools_list, adj_matrix, capacity, max_iterations=max_iterations)
+        agent = Agent(schools_list, adj_matrix, capacity, max_iterations=max_iterations, learning_rate=learning_rate)
         sequence, times = agent.run()
-        # print(sequence, times)
         print_path_graph(school_ids, adj_matrix, addresses, sequence)
         plt.show()
-        multiple_line_chart(plt.gca(), list(range(len(times))), {"sad": times}, "20/20", "WHY", "GOD")
+        single_time_analysis(times, learning_rate)
+    elif mode == Mode.Multi:
+        times_dict = {}
+        if test == Test.LearningRate:
+            for lr in learning_rates:
+                agent = Agent(schools_list, adj_matrix, capacity, max_iterations=max_iterations, learning_rate=lr, discount_factor=discount_factor, epsilon=epsilon)
+                sequence, times = agent.run()
+                times_dict[r'$\alpha$' + " = " + str(lr)] = time_series_decompositions(times, show=False)
+            multiple_line_chart(plt.gca(),
+                                None,
+                                times_dict,
+                                "Greedy Path duration per 10 restarts for learning rate",
+                                "Route Restarts (10)",
+                                "Greedy path duration")
+        elif test == Test.DiscountFactor:
+            for df in discount_factors:
+                agent = Agent(schools_list, adj_matrix, capacity, max_iterations=max_iterations, discount=df, learning_rate=learning_rate,epsilon=epsilon)
+                sequence, times = agent.run()
+                times_dict[r'$\lambda$' + " = " + str(df)] = time_series_decompositions(times, show=False)
+            multiple_line_chart(plt.gca(),
+                                None,
+                                times_dict,
+                                "Greedy Path duration per 10 restarts for discount factor",
+                                "Route Restarts (10)",
+                                "Greedy path duration")
+        elif test == Test.Epsilon:
+            for e in epsilons:
+                agent = Agent(schools_list, adj_matrix, capacity, max_iterations=max_iterations, discount=discount_factor, learning_rate=learning_rate, epsilon=e)
+                sequence, times = agent.run()
+                times_dict[r'$\epsilon$' + " = " + str(e)] = time_series_decompositions(times, show=False)
+            multiple_line_chart(plt.gca(),
+                                None,
+                                times_dict,
+                                "Greedy Path duration per 10 restarts for epsilon",
+                                "Route Restarts (10)",
+                                "Greedy path duration")
         plt.show()
     else:
         lock = defaultdict(lambda: threading.Lock())
         Q = defaultdict(int)
 
         for i in range(5):
-            agent = ThreadingAgent(lock, Q, schools_list, adj_matrix, capacity, max_iterations=max_iterations)
+            agent = ThreadingAgent(lock, Q, schools_list, adj_matrix, capacity, max_iterations=max_iterations, learning_rate=learning_rate)
             agent.start()
 
 
 if __name__ == "__main__":
     import sys
+
     main(sys.argv)
