@@ -276,6 +276,7 @@ class Trip():
 
 
 
+        greedy_paths = []
         print_travel_times = []
         total_travel_times = []
         count_restarts = []
@@ -341,6 +342,7 @@ class Trip():
                 if count_restart % 10 == 1:
                     greedy_path, time = self.recover_greedy_path()
                     print_travel_times.append(time)
+                    greedy_paths.append(greedy_path)
 
                 total_travel_times.append(travel_time)
                 sequence.append(current_state)
@@ -357,8 +359,10 @@ class Trip():
                     print(p)
 
             it += 1
-
-        return self.recover_greedy_path()[0], print_travel_times, total_travel_times, count_restarts
+        greedy_path, time = self.recover_greedy_path()
+        print_travel_times.append(time)
+        greedy_paths.append(greedy_path)
+        return greedy_paths, print_travel_times, total_travel_times, count_restarts
 
 
 
@@ -394,7 +398,7 @@ class Agent():
 
         trip = Trip(self, self.schools)
 
-        print_greedy_paths,print_times, total_travel_times, restart_counts = trip.run(self.max_iterations)
+        print_greedy_paths, print_times, total_travel_times, restart_counts = trip.run(self.max_iterations)
 
         print("------------------------------END OF PROBLEM------------------------------")
 

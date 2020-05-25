@@ -145,8 +145,6 @@ def get_pos_from_coordinates(coordinates):
 
 
 def print_path_graph(school_nodes, nodes, nodes_addresses, path=[], verbose=False):
-    print(school_nodes, nodes, nodes_addresses, sep="\n")
-
     number_nodes = len(nodes)
 
     # create edges list considering a path
@@ -161,7 +159,7 @@ def print_path_graph(school_nodes, nodes, nodes_addresses, path=[], verbose=Fals
     G = nx.MultiDiGraph()
     pos = get_pos_from_coordinates(nodes_addresses)
 
-    plt.figure(figsize=(5, 5))
+    fig = plt.figure(figsize=(5, 5))
 
     for i, sub_path in enumerate(sub_paths):
         keys = G.add_edges_from(sub_path, path=i)
@@ -181,9 +179,10 @@ def print_path_graph(school_nodes, nodes, nodes_addresses, path=[], verbose=Fals
     colors = ['red' if n not in school_nodes else 'orange' for n in G.nodes()]
     nx.draw_networkx_nodes(G, pos, node_size=200, node_color=colors, alpha=0.5)
     nx.draw_networkx_labels(G, pos, font_size=10)
-
+    return fig
 
     if verbose:
+        print(school_nodes, nodes, nodes_addresses, sep="\n")
         print("Sup-paths:", sub_paths)
         print("Positions:", pos)
         print("Graph:", G.graph, G.edges, G.nodes, sep='\n')
@@ -266,8 +265,23 @@ def restart_count_analysis(times, learning_rate, restart_counts):
     plt.clf()
 
 
+def save_path_graphs(school_ids, adj_matrix, addresses, paths, filename):
+    step = (len(paths) - 1) // 30
+    step += 1
+    for i, j in enumerate(range(0, len(paths), step)):
+        fig = print_path_graph(school_ids, adj_matrix, addresses, paths[j])
+        plt.savefig("Movie/frame" + str(i) + ".png", bbox_inches='tight', dpi=300)
+        plt.clf()
+        print("Saved", i)
+        plt.close(fig)
+    fig = print_path_graph(school_ids, adj_matrix, addresses, paths[-1])
+    plt.savefig("Movie/" + filename + "_frame_" +str(j) + ".png", bbox_inches='tight', dpi=300)
+    plt.clf()
+    plt.close(fig)
+
+
 def main(arg: list = []) -> None:
-    filename = 'generated_map_2.txt'
+    filename = 'medium_map.txt'
     if len(arg) < 2:
         print("The correct way to run is: python run_problem.py <file>")
         continue_program = str(input("Do you want to continue using the file " + filename + " [y/n]"))
@@ -282,11 +296,11 @@ def main(arg: list = []) -> None:
     print("schools", schools_list)
 
     Mode = enum.Enum("Mode", "Single Multi Threaded")
-    SingleTest = enum.Enum("SingleTest", "TimeAnalysis RestartCounts")
+    SingleTest = enum.Enum("SingleTest", "TimeAnalysis RestartCounts SaveFrames")
     MultiTest = enum.Enum("MultiTest", "LearningRate DiscountFactor Epsilon")
 
     mode = Mode.Single
-    single_test = SingleTest.TimeAnalysis
+    single_test = SingleTest.SaveFrames
     multi_test = MultiTest.Epsilon
     # mode = Mode.Threaded
     learning_rate = 0.9
@@ -299,12 +313,13 @@ def main(arg: list = []) -> None:
     if mode == Mode.Single:
         agent = Agent(schools_list, adj_matrix, capacity, max_iterations=max_iterations, learning_rate=learning_rate)
         sequence, times, restart_counts = agent.run()
-        print_path_graph(school_ids, adj_matrix, addresses, sequence)
-        plt.show()
         if single_test == SingleTest.TimeAnalysis:
             single_time_analysis(times, learning_rate)
         elif single_test == SingleTest.RestartCounts:
             restart_count_analysis(times, learning_rate, restart_counts)
+        elif single_test == SingleTest.SaveFrames:
+            save_path_graphs(school_ids, adj_matrix, addresses, sequence, filename)
+        plt.show()
     elif mode == Mode.Multi:
         times_dict = {}
         if multi_test == MultiTest.LearningRate:
