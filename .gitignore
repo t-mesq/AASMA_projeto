@@ -9,3 +9,5 @@ __pycache__/agent.cpython-37.pyc
 __pycache__/agent.cpython-37.pyc
 __pycache__/agent.cpython-37.pyc
 *.pyc
+*.png
+generated_map.txt
