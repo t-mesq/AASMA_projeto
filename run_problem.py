@@ -31,6 +31,16 @@ def multiple_line_chart(ax: plt.Axes, xvalues: list, yvalues: dict, title: str, 
         legend.append(name)
     ax.legend(legend, loc='best', fancybox=True, shadow=True, borderaxespad=0)
 
+def bar_chart(ax: plt.Axes, xvalues: list, yvalues: list, title: str, xlabel: str, ylabel: str, step: int, percentage=False, reverse=None):
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+
+    x_labels = list(map(str, xvalues))
+    ax.bar(xvalues, yvalues, width=0.6*step)
+    ax.set_xticks(xvalues)
+    ax.set_xticklabels(x_labels, rotation=90, fontsize='small')
+
 
 def time_series_decompositions(timeseries, xlabel: str = None, ylabel: str = None, show=False):
     decomposition = seasonal_decompose(timeseries, model='additive', period=20)
@@ -88,7 +98,7 @@ def knn_regression(series, xlabel: str = None, ylabel: str = None, show=True):
     return y_
 
 
-def read_adresses_input(filename):
+def read_addresses_input(filename):
     nodes = []
     nodes_addresses = []
     read_nodes = 0
@@ -172,8 +182,7 @@ def print_path_graph(school_nodes, nodes, nodes_addresses, path=[], verbose=Fals
     nx.draw_networkx_nodes(G, pos, node_size=200, node_color=colors, alpha=0.5)
     nx.draw_networkx_labels(G, pos, font_size=10)
 
-    # nx.draw_networkx(graph, pos=nx.spring_layout(), node_color=colors)
-    # plt.show()
+
     if verbose:
         print("Sup-paths:", sub_paths)
         print("Positions:", pos)
@@ -238,16 +247,23 @@ def single_time_analysis(times, learning_rate):
     plt.show()
 
 
-def single_time_analysis(times, learning_rate):
-    trend = time_series_decompositions(times, "Route Restarts (10)", "Greedy path duration", show=True)
-    knn_line = knn_regression(times, "Route Restarts (10)", "Greedy path duration", show=True)
-    multiple_line_chart(plt.gca(),
-                        list(range(len(times))),
-                        {"learning rate " + str(learning_rate): times, "knn regression (K=10)": knn_line, "TS trend (T=30)": trend},
-                        "Greedy Path duration per 10 restarts",
-                        "Route Restarts (10)",
-                        "Greedy path duration")
-    plt.show()
+def restart_count_analysis(times, learning_rate, restart_counts):
+    # number of restarts plot
+    step = int(max_iterations / len(restart_counts))
+    x_axis = [x for x in range(step, max_iterations + step, step)]
+    bar_chart(plt.gca(), x_axis, restart_counts, "Number of restarts by " + str(step) + " iterations", "Iterations", "Number of restarts", step)
+    plt.savefig("number_of_restarts" + filename + ".png", bbox_inches='tight', dpi=300)
+    plt.clf()
+
+    # last path graph plot
+    print_path_graph(school_ids, adj_matrix, addresses, sequence)
+    plt.savefig("graph_" + filename + ".png")
+    plt.clf()
+
+    # travel times plot
+    multiple_line_chart(plt.gca(), list(range(len(times))), {"learning rate " + str(learning_rate): times}, "Greedy Path duration per 10 restarts", "Route Restarts (10)", "Greedy path duration")
+    plt.savefig("figure_" + filename + ".png")
+    plt.clf()
 
 
 def main(arg: list = []) -> None:
@@ -261,14 +277,17 @@ def main(arg: list = []) -> None:
         filename = arg[1]
 
     # read list of nodes from file
-    capacity, max_iterations, school_ids, schools_list, adj_matrix, addresses = read_adresses_input(filename)
+    capacity, max_iterations, school_ids, schools_list, adj_matrix, addresses = read_addresses_input(filename)
 
     print("schools", schools_list)
 
     Mode = enum.Enum("Mode", "Single Multi Threaded")
+    SingleTest = enum.Enum("SingleTest", "TimeAnalysis RestartCounts")
+    MultiTest = enum.Enum("MultiTest", "LearningRate DiscountFactor Epsilon")
+
     mode = Mode.Single
-    Test = enum.Enum("Test", "LearningRate DiscountFactor Epsilon")
-    test = Test.Epsilon
+    single_test = SingleTest.TimeAnalysis
+    multi_test = MultiTest.Epsilon
     # mode = Mode.Threaded
     learning_rate = 0.9
     discount_factor = 0.9
@@ -279,16 +298,19 @@ def main(arg: list = []) -> None:
 
     if mode == Mode.Single:
         agent = Agent(schools_list, adj_matrix, capacity, max_iterations=max_iterations, learning_rate=learning_rate)
-        sequence, times = agent.run()
+        sequence, times, restart_counts = agent.run()
         print_path_graph(school_ids, adj_matrix, addresses, sequence)
         plt.show()
-        single_time_analysis(times, learning_rate)
+        if single_test == SingleTest.TimeAnalysis:
+            single_time_analysis(times, learning_rate)
+        elif single_test == SingleTest.RestartCounts:
+            restart_count_analysis(times, learning_rate, restart_counts)
     elif mode == Mode.Multi:
         times_dict = {}
-        if test == Test.LearningRate:
+        if multi_test == MultiTest.LearningRate:
             for lr in learning_rates:
                 agent = Agent(schools_list, adj_matrix, capacity, max_iterations=max_iterations, learning_rate=lr, discount_factor=discount_factor, epsilon=epsilon)
-                sequence, times = agent.run()
+                sequence, times, _ = agent.run()
                 times_dict[r'$\alpha$' + " = " + str(lr)] = time_series_decompositions(times, show=False)
             multiple_line_chart(plt.gca(),
                                 None,
@@ -296,10 +318,10 @@ def main(arg: list = []) -> None:
                                 "Greedy Path duration per 10 restarts for learning rate",
                                 "Route Restarts (10)",
                                 "Greedy path duration")
-        elif test == Test.DiscountFactor:
+        elif multi_test == MultiTest.DiscountFactor:
             for df in discount_factors:
                 agent = Agent(schools_list, adj_matrix, capacity, max_iterations=max_iterations, discount=df, learning_rate=learning_rate,epsilon=epsilon)
-                sequence, times = agent.run()
+                sequence, times, _ = agent.run()
                 times_dict[r'$\lambda$' + " = " + str(df)] = time_series_decompositions(times, show=False)
             multiple_line_chart(plt.gca(),
                                 None,
@@ -307,10 +329,10 @@ def main(arg: list = []) -> None:
                                 "Greedy Path duration per 10 restarts for discount factor",
                                 "Route Restarts (10)",
                                 "Greedy path duration")
-        elif test == Test.Epsilon:
+        elif multi_test == MultiTest.Epsilon:
             for e in epsilons:
                 agent = Agent(schools_list, adj_matrix, capacity, max_iterations=max_iterations, discount=discount_factor, learning_rate=learning_rate, epsilon=e)
-                sequence, times = agent.run()
+                sequence, times, _ = agent.run()
                 times_dict[r'$\epsilon$' + " = " + str(e)] = time_series_decompositions(times, show=False)
             multiple_line_chart(plt.gca(),
                                 None,
